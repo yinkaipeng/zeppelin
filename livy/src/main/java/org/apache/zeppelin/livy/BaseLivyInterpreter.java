@@ -41,6 +41,7 @@ import org.apache.zeppelin.interpreter.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -604,7 +605,7 @@ public abstract class BaseLivyInterpreter extends Interpreter {
     targetURL = livyURL + targetURL;
     LOGGER.debug("Call rest api in {}, method: {}, jsonData: {}", targetURL, method, jsonData);
     HttpHeaders headers = new HttpHeaders();
-    headers.add("Content-Type", "application/json");
+    headers.add("Content-Type", MediaType.APPLICATION_JSON_UTF8_VALUE);
     headers.add("X-Requested-By", "zeppelin");
     for (Map.Entry<String, String> entry : customHeaders.entrySet()) {
       headers.add(entry.getKey(), entry.getValue());

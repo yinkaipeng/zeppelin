@@ -77,3 +77,5 @@ ZEPPELIN-3072   Zeppelin UI becomes slow/unresponsive if there are too many note
 ZEPPELIN-3129   Zepplin UI Doesnt logs out in IE
 BUG-93529       Issues with Remote Storage and Kerberos
 
+BUG-119309      ZEPPELIN-2641 Change encoding to UTF-8 when sending request to Livy
+
