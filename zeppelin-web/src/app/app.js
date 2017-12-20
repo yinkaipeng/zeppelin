@@ -148,12 +148,23 @@ function auth() {
       withCredentials: true
     },
     crossDomain: true
-  });
-  return $http.get(baseUrlSrv.getRestApiBase() + '/security/ticket').then(function(response) {
-    zeppelinWebApp.run(function($rootScope) {
-      $rootScope.ticket = angular.fromJson(response.data).body;
-    });
-  }, function(errorResponse) {
+  })
+  let config = (process.env.PROD) ? {headers: { 'X-Requested-With': 'XMLHttpRequest' }} : {}
+  return $http.get(baseUrlSrv.getRestApiBase() + '/security/ticket', config).then(function (response) {
+    zeppelinWebApp.run(function ($rootScope) {
+      let res = angular.fromJson(response.data).body
+      if (res['redirectURL']) {
+        window.location.href = res['redirectURL'] + window.location.href
+      } else {
+        $rootScope.ticket = res
+        $rootScope.ticket.screenUsername = $rootScope.ticket.principal
+        if ($rootScope.ticket.principal.indexOf('#Pac4j') === 0) {
+          let re = ', name=(.*?),'
+          $rootScope.ticket.screenUsername = $rootScope.ticket.principal.match(re)[1]
+        }
+      }
+    })
+  }, function (errorResponse) {
     // Handle error case
   });
 }

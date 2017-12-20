@@ -56,7 +56,7 @@ public class NotebookRestApiTest extends AbstractTestRestApi {
 
   @BeforeClass
   public static void init() throws Exception {
-    AbstractTestRestApi.startUp();
+    AbstractTestRestApi.startUp(NotebookRestApiTest.class.getSimpleName());
   }
 
   @AfterClass
