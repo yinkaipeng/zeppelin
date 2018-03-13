@@ -78,4 +78,5 @@ ZEPPELIN-3129   Zepplin UI Doesnt logs out in IE
 BUG-93529       Issues with Remote Storage and Kerberos
 
 BUG-119309      ZEPPELIN-2641 Change encoding to UTF-8 when sending request to Livy
+BUG-119309      ZEPPELIN-3099 Livy Interpreter doesn't support German Special Character - Encoding Issue
 
