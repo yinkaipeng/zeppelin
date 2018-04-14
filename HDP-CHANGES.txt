@@ -83,3 +83,5 @@ BUG-93529       Issues with Remote Storage and Kerberos
 
     BUG-108850. - ZEPPELIN-3384 Reduce number of calls that are made to
     `UserGroupInformation.loginUserFromKeytab` in JDBC interpreter
+
+    BUG-108850. - [HOTFIX] [ZEPPELIN-3384] Checkstyle violation.
