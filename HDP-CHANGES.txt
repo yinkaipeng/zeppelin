@@ -80,3 +80,6 @@ ZEPPELIN-3129   Zepplin UI Doesnt logs out in IE
 BUG-93529       Issues with Remote Storage and Kerberos
 
     BUG-108849. [ZEPPELIN-3539] Add jceks stored password support for LDAP
+
+    BUG-108850. - ZEPPELIN-3384 Reduce number of calls that are made to
+    `UserGroupInformation.loginUserFromKeytab` in JDBC interpreter
