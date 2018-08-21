@@ -16,9 +16,12 @@
  */
 package org.apache.zeppelin.rest;
 
+import javax.ws.rs.core.Response.Status;
 import org.apache.shiro.authc.*;
 import org.apache.shiro.subject.Subject;
 import org.apache.zeppelin.annotation.ZeppelinApi;
+import org.apache.zeppelin.conf.ZeppelinConfiguration;
+import org.apache.zeppelin.notebook.Notebook;
 import org.apache.zeppelin.notebook.NotebookAuthorization;
 import org.apache.zeppelin.server.JsonResponse;
 import org.apache.zeppelin.ticket.TicketContainer;
@@ -43,12 +46,18 @@ import java.util.Map;
 @Produces("application/json")
 public class LoginRestApi {
   private static final Logger LOG = LoggerFactory.getLogger(LoginRestApi.class);
+  private ZeppelinConfiguration zConf;
 
   /**
    * Required by Swagger.
    */
   public LoginRestApi() {
     super();
+  }
+
+  public LoginRestApi(Notebook notebook) {
+    super();
+    this.zConf = notebook.getConf();
   }
 
 
@@ -125,11 +134,20 @@ public class LoginRestApi {
   @ZeppelinApi
   public Response logout() {
     JsonResponse response;
+    Status status;
+    Map<String, String> data = new HashMap<>();
+    if (zConf.isAuthorizationHeaderClear()) {
+      status = Status.UNAUTHORIZED;
+      data.put("clearAuthorizationHeader", "true");
+    } else {
+      status = Status.FORBIDDEN;
+      data.put("clearAuthorizationHeader", "false");
+    }
     Subject currentUser = org.apache.shiro.SecurityUtils.getSubject();
     TicketContainer.instance.removeTicket(SecurityUtils.getPrincipal());
     currentUser.getSession().stop();
     currentUser.logout();
-    response = new JsonResponse(Response.Status.UNAUTHORIZED, "", "");
+    response = new JsonResponse(status, "", data);
     LOG.warn(response.toString());
     return response.build();
   }
