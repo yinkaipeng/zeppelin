@@ -181,7 +181,7 @@ public class AzureNotebookRepo implements NotebookRepo {
   }
 
   // unfortunately, we need to use a recursive delete here
-  private void delete(ListFileItem item) throws StorageException {
+  private void delete(ListFileItem item) throws StorageException, URISyntaxException {
     if (item.getClass() == CloudFileDirectory.class) {
       CloudFileDirectory dir = (CloudFileDirectory) item;
 
