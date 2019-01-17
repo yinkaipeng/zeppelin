@@ -192,10 +192,10 @@ public class SqlCompleter extends StringsCompleter {
   public static Set<String> getDataModelMetadataCompletions(Connection connection)
       throws SQLException {
     Set<String> completions = new TreeSet<>();
-    if (null != connection) {
-      getColumnNames(connection.getMetaData(), completions);
-      getSchemaNames(connection.getMetaData(), completions);
-    }
+    // if (null != connection) {
+    //   getColumnNames(connection.getMetaData(), completions);
+    //   getSchemaNames(connection.getMetaData(), completions);
+    // }
     return completions;
   }
 
