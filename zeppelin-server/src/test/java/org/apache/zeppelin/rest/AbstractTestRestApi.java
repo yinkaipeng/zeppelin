@@ -17,6 +17,10 @@
 
 package org.apache.zeppelin.rest;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
@@ -27,7 +31,6 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
-
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.PumpStreamHandler;
@@ -51,11 +54,6 @@ import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 
 public abstract class AbstractTestRestApi {
 
@@ -89,6 +87,51 @@ public abstract class AbstractTestRestApi {
       "[urls]\n" +
       "/api/version = anon\n" +
       "/** = authc";
+
+  private static String zeppelinShiroKnox =
+      "[users]\n" +
+      "admin = password1, admin\n" +
+      "user1 = password2, role1, role2\n" +
+      "[main]\n" +
+      "knoxJwtRealm = org.apache.zeppelin.realm.jwt.KnoxJwtRealm\n" +
+      "knoxJwtRealm.providerUrl = https://domain.example.com/\n" +
+      "knoxJwtRealm.login = gateway/knoxsso/knoxauth/login.html\n" +
+      "knoxJwtRealm.logout = gateway/knoxssout/api/v1/webssout\n" +
+      "knoxJwtRealm.redirectParam = originalUrl\n" +
+      "knoxJwtRealm.cookieName = hadoop-jwt\n" +
+      "knoxJwtRealm.publicKeyPath = knox-sso.pem\n" +
+      "authc = org.apache.zeppelin.realm.jwt.KnoxAuthenticationFilter\n" +
+      "sessionManager = org.apache.shiro.web.session.mgt.DefaultWebSessionManager\n" +
+      "securityManager.sessionManager = $sessionManager\n" +
+      "securityManager.sessionManager.globalSessionTimeout = 86400000\n" +
+      "shiro.loginUrl = /api/login\n" +
+      "[roles]\n" +
+      "admin = *\n" +
+      "[urls]\n" +
+      "/api/version = anon\n" +
+      "/** = authc";
+
+  private static File knoxSsoPem = null;
+  private static String KNOX_SSO_PEM =
+      "-----BEGIN CERTIFICATE-----\n"
+      + "MIIChjCCAe+gAwIBAgIJALYrdDEXKwcqMA0GCSqGSIb3DQEBBQUAMIGEMQswCQYD\n"
+      + "VQQGEwJVUzENMAsGA1UECBMEVGVzdDENMAsGA1UEBxMEVGVzdDEPMA0GA1UEChMG\n"
+      + "SGFkb29wMQ0wCwYDVQQLEwRUZXN0MTcwNQYDVQQDEy5jdHItZTEzNS0xNTEyMDY5\n"
+      + "MDMyOTc1LTU0NDctMDEtMDAwMDAyLmh3eC5zaXRlMB4XDTE3MTIwNDA5NTIwMFoX\n"
+      + "DTE4MTIwNDA5NTIwMFowgYQxCzAJBgNVBAYTAlVTMQ0wCwYDVQQIEwRUZXN0MQ0w\n"
+      + "CwYDVQQHEwRUZXN0MQ8wDQYDVQQKEwZIYWRvb3AxDTALBgNVBAsTBFRlc3QxNzA1\n"
+      + "BgNVBAMTLmN0ci1lMTM1LTE1MTIwNjkwMzI5NzUtNTQ0Ny0wMS0wMDAwMDIuaHd4\n"
+      + "LnNpdGUwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAILFoXdz3yCy2INncYM2\n"
+      + "y72fYrONoQIxeeIzeJIibXLTuowSju90Q6aThSyUsQ6NEia2flnlKiCgINTNAodh\n"
+      + "UPUVGyGT+NMrqJzzpXAll2UUa6gIUPnXYEzYNkMIpbQOAo5BAg7YamaidbPPiT3W\n"
+      + "wAD1rWo3AMUY+nZJrAi4dEH5AgMBAAEwDQYJKoZIhvcNAQEFBQADgYEAB0R07/lo\n"
+      + "4hD+WeDEeyLTnsbFnPNXxBT1APMUmmuCjcky/19ZB8OphqTKIITONdOK/XHdjZHG\n"
+      + "JDOfhBkVknL42lSi45ahUAPS2PZOlQL08MbS8xajP1faterm+aHcdwJVK9dK76RB\n"
+      + "/bA8TFNPblPxavIOcd+R+RfFmT1YKfYIhco=\n"
+      + "-----END CERTIFICATE-----";
+
+  protected static File zeppelinHome;
+  protected static File confDir;
 
   private String getUrl(String path) {
     String url;
@@ -124,7 +167,7 @@ public abstract class AbstractTestRestApi {
     }
   };
 
-  private static void start(boolean withAuth) throws Exception {
+  private static void start(boolean withAuth, String testClassName, boolean withKnox) throws Exception {
     if (!wasRunning) {
       System.setProperty(ZeppelinConfiguration.ConfVars.ZEPPELIN_HOME.getVarName(), "../");
       System.setProperty(ZeppelinConfiguration.ConfVars.ZEPPELIN_WAR.getVarName(), "../zeppelin-web/dist");
@@ -146,7 +189,18 @@ public abstract class AbstractTestRestApi {
         if (!shiroIni.exists()) {
           shiroIni.createNewFile();
         }
-        FileUtils.writeStringToFile(shiroIni, zeppelinShiro);
+        if (withKnox) {
+          FileUtils.writeStringToFile(shiroIni,
+              zeppelinShiroKnox.replaceAll("knox-sso.pem", confDir + "/knox-sso.pem"));
+          knoxSsoPem = new File(confDir, "knox-sso.pem");
+          if (!knoxSsoPem.exists()) {
+            knoxSsoPem.createNewFile();
+          }
+          FileUtils.writeStringToFile(knoxSsoPem, KNOX_SSO_PEM);
+        } else {
+          FileUtils.writeStringToFile(shiroIni, zeppelinShiro);
+        }
+
       }
 
       // exclude org.apache.zeppelin.rinterpreter.* for scala 2.11 test
@@ -231,13 +285,17 @@ public abstract class AbstractTestRestApi {
       }
     }
   }
-  
-  protected static void startUpWithAuthenticationEnable() throws Exception {
-    start(true);
+
+  protected static void startUpWithKnoxEnable(String testClassName) throws Exception {
+    start(true, testClassName, true);
+  }
+
+  protected static void startUpWithAuthenticationEnable(String testClassName) throws Exception {
+    start(true, testClassName, false);
   }
   
-  protected static void startUp() throws Exception {
-    start(false);
+  protected static void startUp(String testClassName) throws Exception {
+    start(false, testClassName, false);
   }
 
   private static String getHostname() {
@@ -352,12 +410,19 @@ public abstract class AbstractTestRestApi {
   }
   
   protected static GetMethod httpGet(String path, String user, String pwd) throws IOException {
+    return httpGet(path, user, pwd, StringUtils.EMPTY);
+  }
+
+  protected static GetMethod httpGet(String path, String user, String pwd, String cookies) throws IOException {
     LOG.info("Connecting to {}", url + path);
     HttpClient httpClient = new HttpClient();
     GetMethod getMethod = new GetMethod(url + path);
     getMethod.addRequestHeader("Origin", url);
     if (userAndPasswordAreNotBlank(user, pwd)) {
       getMethod.setRequestHeader("Cookie", "JSESSIONID="+ getCookie(user, pwd));
+    }
+    if (!StringUtils.isBlank(cookies)) {
+      getMethod.setRequestHeader("Cookie", getMethod.getResponseHeader("Cookie") + ";" + cookies);
     }
     httpClient.executeMethod(getMethod);
     LOG.info("{} - {}", getMethod.getStatusCode(), getMethod.getStatusText());

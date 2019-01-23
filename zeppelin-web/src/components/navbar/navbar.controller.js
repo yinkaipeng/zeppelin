@@ -98,64 +98,77 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
     websocketMsgSrv.getHomeNote();
   }
 
-  function logout() {
-    var logoutURL = baseUrlSrv.getRestApiBase() + '/login/logout';
+  function logout () {
+    let logoutURL = baseUrlSrv.getRestApiBase() + '/login/logout';
 
-    $http.post(logoutURL).error(function(response) {
-
-      var clearAuthorizationHeader = 'true';
-      if (response.body && response.body['clearAuthorizationHeader']) {
-        clearAuthorizationHeader = response.body['clearAuthorizationHeader'];
+    $http.post(logoutURL).then(function() {}, function(response) {
+      let clearAuthorizationHeader = 'true';
+      if (response.data) {
+        let res = angular.fromJson(response.data).body;
+        if (res['redirectURL']) {
+          if (res['isLogoutAPI'] === 'true') {
+            $http.get(res['redirectURL']).then(function() {
+            }, function() {
+              window.location = baseUrlSrv.getBase();
+            });
+          } else {
+            window.location.href = res['redirectURL'] + window.location.href;
+          }
+          return undefined;
+        }
+        if (res['clearAuthorizationHeader']) {
+          clearAuthorizationHeader = res['clearAuthorizationHeader'];
+        }
       }
 
+      // force authcBasic (if configured) to logout
       if (clearAuthorizationHeader === 'true') {
-        //force authcBasic (if configured) to logout
         if (detectIE()) {
-          var outcome
+          let outcome;
           try {
-            outcome = document.execCommand('ClearAuthenticationCache')
+            outcome = document.execCommand('ClearAuthenticationCache');
           } catch (e) {
-            console.log(e)
+            console.log(e);
           }
           if (!outcome) {
             // Let's create an xmlhttp object
-            outcome = (function (x) {
+            outcome = (function(x) {
               if (x) {
                 // the reason we use "random" value for password is
                 // that browsers cache requests. changing
                 // password effectively behaves like cache-busing.
                 x.open('HEAD', location.href, true, 'logout',
-                  (new Date()).getTime().toString())
-                x.send('')
+                  (new Date()).getTime().toString());
+                x.send('');
                 // x.abort()
-                return 1 // this is **speculative** "We are done."
+                return 1; // this is **speculative** "We are done."
               } else {
                 // eslint-disable-next-line no-useless-return
-                return
+                return;
               }
             })(window.XMLHttpRequest ? new window.XMLHttpRequest()
               // eslint-disable-next-line no-undef
-              : (window.ActiveXObject ? new ActiveXObject('Microsoft.XMLHTTP') : u))
+              : (window.ActiveXObject ? new ActiveXObject('Microsoft.XMLHTTP') : u));
           }
           if (!outcome) {
-            var m = 'Your browser is too old or too weird to support log out functionality. Close all windows and '
-              +
-              'restart the browser.'
-            alert(m)
+            let m = 'Your browser is too old or too weird to support log out functionality. Close all windows and ' +
+              'restart the browser.';
+            alert(m);
           }
         } else {
           // for firefox and safari
-          logoutURL = logoutURL.replace('//', '//false:false@')
+          logoutURL = logoutURL.replace('//', '//false:false@');
         }
       }
 
       $http.post(logoutURL).error(function() {
         $rootScope.userName = '';
         $rootScope.ticket.principal = '';
+        $rootScope.ticket.screenUsername = '';
         $rootScope.ticket.ticket = '';
         $rootScope.ticket.roles = '';
         BootstrapDialog.show({
-          message: 'Logout Success'
+          message: 'Logout Success',
         });
         setTimeout(function() {
           window.location = baseUrlSrv.getBase();
